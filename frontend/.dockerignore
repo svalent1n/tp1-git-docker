@@ -1,0 +1,9 @@
+# Evita copiar archivos innecesarios al contexto de build.
+node_modules
+dist
+.env
+.git
+.gitignore
+Dockerfile
+.dockerignore
+npm-debug.log
