@@ -1,0 +1,76 @@
+# Docker Compose: orquesta el backend (API), el frontend (web) y la base de
+# datos (MySQL) como un solo stack. Levantar todo con: docker compose up --build
+
+services:
+  # --- Servicio Base de Datos: MySQL ---
+  mysql:
+    image: mysql:8.0
+    container_name: mundial-mysql
+    environment:
+      # MySQL lee estas variables al iniciar por PRIMERA vez: crea el usuario
+      # root con esta contraseña y la base de datos vacía 'mundial'.
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root123!}
+      MYSQL_DATABASE: ${DB_NAME:-mundial}
+    ports:
+      # host:contenedor — exponemos el 3306 interno en el 3309 del host para que
+      # vos puedas conectarte con Workbench desde Windows. El backend NO usa esto.
+      - "3309:3306"
+    volumes:
+      # Persistencia: los datos de MySQL viven en este volumen administrado por
+      # Docker. Si borrás el contenedor, los datos siguen acá (no se pierden).
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      # Compose espera a que MySQL esté REALMENTE listo (no solo "arrancando")
+      # antes de levantar el backend. mysqladmin ping responde cuando acepta conexiones.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD:-root123!}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # --- Servicio Backend: API REST del Mundial 2026 ---
+  backend:
+    build: ./backend
+    container_name: mundial-backend
+    ports:
+      - "3000:3000"
+    environment:
+      # Variables de entorno leídas por config/index.ts (cubre el bonus).
+      PORT: 3000
+      NODE_ENV: production
+      CORS_ORIGIN: "*"
+      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
+      ADMIN_USER: ${ADMIN_USER:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin1234}
+      # Conexión a MySQL DENTRO de la red de Compose: el host es el NOMBRE del
+      # servicio ('mysql'), no 'localhost', y el puerto es el INTERNO (3306), no 3309.
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-root123!}
+      DB_NAME: ${DB_NAME:-mundial}
+    depends_on:
+      # No solo "que mysql exista", sino "que mysql esté SANO" (healthcheck OK).
+      # Así el backend no intenta conectarse antes de que la base acepte conexiones.
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Servicio Frontend: app de React servida por Nginx ---
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # La URL de la API se inyecta al construir el frontend.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000/api}
+    container_name: mundial-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+# Volúmenes administrados por Docker (declarados acá, usados arriba).
+volumes:
+  mysql-data:
