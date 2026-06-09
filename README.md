@@ -82,7 +82,7 @@ cd frontend && npm install && npm run dev
 ## CI/CD
 
 El workflow `.github/workflows/ci.yml` compila backend y frontend en cada push y
-pull request a `main`. Si el build pasa y es un push a `main`, construye las
+pull request a `master`. Si el build pasa y es un push a `master`, construye las
 imágenes y las publica en Docker Hub. Requiere los secrets `DOCKERHUB_USERNAME` y
 `DOCKERHUB_TOKEN` en el repositorio (Settings → Secrets and variables → Actions).
 
