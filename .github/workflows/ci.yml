@@ -1,6 +1,6 @@
 # Pipeline de CI/CD con GitHub Actions.
 # 1) Compila backend y frontend para verificar que no hay errores.
-# 2) (Solo en la rama main) construye las imágenes Docker y las publica en Docker Hub.
+# 2) (Solo en la rama master) construye las imágenes Docker y las publica en Docker Hub.
 #
 # Requiere configurar en el repo (Settings > Secrets and variables > Actions):
 #   - DOCKERHUB_USERNAME : tu usuario de Docker Hub
@@ -10,9 +10,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   # --- Job 1: build y verificación de compilación ---
@@ -42,7 +42,7 @@ jobs:
   docker:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
